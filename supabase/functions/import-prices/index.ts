@@ -1,5 +1,6 @@
 // Nightly job: pulls Pokemon card prices from pokemontcg.io into cards + price_snapshots.
-// Schedule with Supabase Cron. Needs POKEMONTCG_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
+// Scheduled with Supabase Cron by scripts/setup-supabase.sh, which deploys it without JWT checks;
+// callers must send the CRON_SECRET in an x-cron-secret header. Optional POKEMONTCG_API_KEY.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const API = 'https://api.pokemontcg.io/v2/cards';
@@ -24,7 +25,10 @@ function marketCents(card: ApiCard): number | null {
   return prices.length ? Math.round(Math.max(...prices) * 100) : null;
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  const secret = Deno.env.get('CRON_SECRET');
+  if (!secret || req.headers.get('x-cron-secret') !== secret) return new Response('Forbidden', { status: 403 });
+
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const headers = { 'X-Api-Key': Deno.env.get('POKEMONTCG_API_KEY') ?? '' };
   const today = new Date().toISOString().slice(0, 10);
