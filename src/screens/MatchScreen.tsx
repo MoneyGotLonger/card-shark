@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { botAnswer } from '../game/bot';
 import { ROUND_TIME_MS, scoreRound } from '../game/scoring';
-import type { Pair, RoundResult } from '../game/types';
+import type { Card, Pair, RoundResult } from '../game/types';
 import { colors } from '../theme';
 
 type Props = {
@@ -61,18 +61,36 @@ export function MatchScreen({ pairs, opponentRating, onDone }: Props) {
         Which is worth <Text style={styles.promptWord}>{pair.prompt === 'higher' ? 'MORE' : 'LESS'}</Text>?
       </Text>
       <View style={styles.cards}>
-        {(['left', 'right'] as const).map((side) => {
-          const c = pair[side];
-          return (
-            <Pressable key={side} style={styles.card} onPress={() => answer(side)}>
-              <Text style={styles.cardName}>{c.name}</Text>
-              <Text style={styles.cardSet}>{c.setName}</Text>
-              <Text style={styles.cardSet}>#{c.number}</Text>
-            </Pressable>
-          );
-        })}
+        {(['left', 'right'] as const).map((side) => (
+          <Pressable key={`${round}-${side}`} style={styles.card} onPress={() => answer(side)}>
+            <CardFace card={pair[side]} />
+          </Pressable>
+        ))}
       </View>
       <Text style={styles.opponent}>Opponent: Bot · scores revealed after round {pairs.length}</Text>
+    </View>
+  );
+}
+
+/** The card's picture; falls back to its name and set if the image can't load. */
+function CardFace({ card }: { card: Card }) {
+  const [failed, setFailed] = useState(false);
+  if (card.imageUrl && !failed) {
+    return (
+      <Image
+        source={{ uri: card.imageUrl }}
+        style={styles.cardImage}
+        resizeMode="contain"
+        accessibilityLabel={`${card.name}, ${card.setName} #${card.number}`}
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  return (
+    <View style={styles.cardFallback}>
+      <Text style={styles.cardName}>{card.name}</Text>
+      <Text style={styles.cardSet}>{card.setName}</Text>
+      <Text style={styles.cardSet}>#{card.number}</Text>
     </View>
   );
 }
@@ -84,12 +102,15 @@ const styles = StyleSheet.create({
   timerFill: { height: '100%', backgroundColor: colors.accent },
   prompt: { color: colors.text, fontSize: 24, fontWeight: '600', textAlign: 'center', marginBottom: 24 },
   promptWord: { color: colors.accent, fontWeight: '800' },
-  cards: { flexDirection: 'row', gap: 12, flex: 1, maxHeight: 320 },
-  card: {
+  cards: { flexDirection: 'row', gap: 12 },
+  // Real cards are 63 x 88 mm.
+  card: { flex: 1, aspectRatio: 63 / 88 },
+  cardImage: { width: '100%', height: '100%', borderRadius: 10 },
+  cardFallback: {
     flex: 1,
     backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 10,
+    padding: 12,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
