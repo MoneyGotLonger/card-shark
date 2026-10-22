@@ -25,6 +25,15 @@ function marketCents(card: ApiCard): number | null {
   return prices.length ? Math.round(Math.max(...prices) * 100) : null;
 }
 
+/** pokemontcg.io often returns 5xx under load, especially without an API key, so retry those. */
+async function fetchPage(url: string, headers: Record<string, string>): Promise<Response> {
+  for (let attempt = 1; ; attempt++) {
+    const res = await fetch(url, { headers });
+    if (res.status < 500 || attempt === 4) return res;
+    await new Promise((r) => setTimeout(r, 2000 * attempt));
+  }
+}
+
 Deno.serve(async (req) => {
   const secret = Deno.env.get('CRON_SECRET');
   if (!secret || req.headers.get('x-cron-secret') !== secret) return new Response('Forbidden', { status: 403 });
@@ -37,7 +46,7 @@ Deno.serve(async (req) => {
   for (let page = 1; page <= MAX_PAGES; page++) {
     const q = encodeURIComponent('tcgplayer.prices.holofoil.market:[1 TO *] OR tcgplayer.prices.normal.market:[1 TO *]');
     const url = `${API}?page=${page}&pageSize=${PAGE_SIZE}&q=${q}&orderBy=-set.releaseDate`;
-    const res = await fetch(url, { headers });
+    const res = await fetchPage(url, headers);
     if (!res.ok) return new Response(`pokemontcg.io ${res.status} on page ${page}`, { status: 502 });
     const { data } = (await res.json()) as { data: ApiCard[] };
     if (!data.length) break;

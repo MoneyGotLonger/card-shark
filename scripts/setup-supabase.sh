@@ -63,6 +63,6 @@ echo
 sql "select count(*) as priced_cards from latest_prices;"
 
 echo "== App config (put these in .env.local)"
-ANON="$(curl -sSf "${AUTH[@]}" "$API/api-keys" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).find(k=>k.name==="anon").api_key))')"
+ANON="$(curl -sSf "${AUTH[@]}" "$API/api-keys" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>const k=JSON.parse(s);console.log((k.find(x=>x.type==="publishable")||k.find(x=>x.name==="anon")).api_key))')"
 echo "EXPO_PUBLIC_SUPABASE_URL=https://$REF.supabase.co"
 echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=$ANON"
