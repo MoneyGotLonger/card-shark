@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { SAMPLE_CARDS } from './src/data/sampleCards';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { type Deck, loadDeck } from './src/data/deck';
 import { buildPairs } from './src/game/pairs';
 import { tierFor } from './src/game/tiers';
 import type { Pair, RoundResult } from './src/game/types';
@@ -19,7 +19,17 @@ type Screen =
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
-  const startMatch = () => setScreen({ name: 'match', pairs: buildPairs(SAMPLE_CARDS, PLAYER_RATING) });
+  const [deck, setDeck] = useState<Deck | null>(null);
+  useEffect(() => {
+    loadDeck().then(setDeck);
+  }, []);
+
+  // Reload in the background after each match so the next one draws fresh cards.
+  const startMatch = () => {
+    if (!deck) return;
+    setScreen({ name: 'match', pairs: buildPairs(deck.cards, PLAYER_RATING) });
+    if (deck.source === 'live') loadDeck().then(setDeck);
+  };
 
   return (
     <View style={styles.root}>
@@ -29,10 +39,11 @@ export default function App() {
           <Text style={styles.title}>Card Shark</Text>
           <Text style={styles.tagline}>Know the market. Beat your rival.</Text>
           <Text style={styles.rank}>Rank: {tierFor(PLAYER_RATING)}</Text>
-          <Pressable style={styles.button} onPress={startMatch}>
-            <Text style={styles.buttonText}>Play</Text>
+          <Pressable style={[styles.button, !deck && styles.buttonDisabled]} onPress={startMatch} disabled={!deck}>
+            {deck ? <Text style={styles.buttonText}>Play</Text> : <ActivityIndicator color={colors.bg} />}
           </Pressable>
-          <Text style={styles.banner}>Prototype · sample prices, not real market data</Text>
+          {deck?.source === 'sample' && <Text style={styles.banner}>Prototype · sample prices, not real market data</Text>}
+          {deck?.source === 'live' && <Text style={styles.banner}>TCGplayer market prices via pokemontcg.io</Text>}
         </View>
       )}
       {screen.name === 'match' && (
@@ -54,6 +65,7 @@ const styles = StyleSheet.create({
   tagline: { color: colors.muted, fontSize: 16, marginTop: 8 },
   rank: { color: colors.accent, fontSize: 18, fontWeight: '700', marginTop: 32 },
   button: { backgroundColor: colors.accent, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 64, marginTop: 24 },
+  buttonDisabled: { opacity: 0.6 },
   buttonText: { color: colors.bg, fontSize: 20, fontWeight: '800' },
   banner: { color: colors.muted, fontSize: 12, position: 'absolute', bottom: 40 },
 });
