@@ -26,7 +26,7 @@ It applies the migrations, deploys `import-prices`, schedules it nightly at 07:0
 npm install
 npm test          # game logic tests
 npm run typecheck
-npx expo start    # scan the QR code with Expo Go, or press w for web
+npx expo start    # scan the QR code with Expo Go (SDK 57), or press w for web
 ```
 
 ## Next
